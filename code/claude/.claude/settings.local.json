@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pkill:*)",
+      "Bash(del:*)",
+      "Bash(NUL)",
+      "Bash(rm:*)",
+      "Bash(requirements.txt)",
+      "Bash(cat:*)",
+      "Bash(pip install:*)",
+      "Bash(tree:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(echo:*)",
+      "Bash(timeout:*)",
+      "Bash(taskkill:*)",
+      "Bash(powershell:*)",
+      "Bash(./data/物料数据.csv)",
+      "Bash(/bashes:*)",
+      "Bash(xargs:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

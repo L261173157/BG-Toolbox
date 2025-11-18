@@ -9,6 +9,7 @@ import json
 import time
 import csv
 import pandas as pd
+from openai import OpenAI
 from config import Config
 from logger import logger
 
@@ -120,52 +121,49 @@ class MaterialClassifier:
     def _call_deepseek_api(self, prompt):
         """
         调用DeepSeek API
-        
+
         参数:
             prompt (str): 请求的提示词
-            
+
         返回值:
             dict: API返回的分类结果
-            
+
         异常:
-            requests.exceptions.RequestException: 请求异常
-            json.JSONDecodeError: JSON解析异常
-            Exception: 其他异常
+            Exception: API调用异常
         """
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-        
-        payload = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "你是一个专业的物料分类员"
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            "temperature": 0.1,  # 降低随机性，提高稳定性
-            "response_format": {"type": "json_object"}  # 强制输出JSON
-        }
-        
+        # 创建OpenAI客户端，使用DeepSeek API
+        client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.api_url,
+        )
+
+        # 定义web_search工具
+        tools = [{
+            "type": "web_search",
+            "max_keyword": 4,
+        }]
+
         for attempt in range(Config.MAX_RETRIES):
             try:
-                response = requests.post(
-                    url=self.api_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=Config.REQUEST_TIMEOUT
+                # 调用API进行物料分类，启用web_search工具
+                response = client.responses.create(
+                    model=self.model,
+                    input=[
+                        {
+                            "role": "system",
+                            "content": "你是一个专业的物料分类员"
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=0.1,  # 降低随机性，提高稳定性
+                    tools=tools,
                 )
-                response.raise_for_status()  # 检查HTTP错误
-                
+
                 # 解析响应
-                result = response.json()
-                content = result["choices"][0]["message"]["content"]
+                content = response.output_text
 
                 # 处理不同的响应格式
                 parsed_result = None
@@ -197,25 +195,11 @@ class MaterialClassifier:
                     raise ValueError(f"API返回的JSON缺少必要字段: {list(parsed_result.keys())}")
 
                 return parsed_result
-            
-            except requests.exceptions.RequestException as e:
-                logger.error(f"API请求失败 (尝试 {attempt+1}/{Config.MAX_RETRIES}): {str(e)}")
-                if attempt < Config.MAX_RETRIES - 1:
-                    time.sleep(2 ** attempt)  # 指数退避
-                else:
-                    raise
-            
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON解析失败 (尝试 {attempt+1}/{Config.MAX_RETRIES}): {str(e)}")
-                if attempt < Config.MAX_RETRIES - 1:
-                    time.sleep(2 ** attempt)
-                else:
-                    raise
-            
+
             except Exception as e:
                 logger.error(f"API调用失败 (尝试 {attempt+1}/{Config.MAX_RETRIES}): {str(e)}")
                 if attempt < Config.MAX_RETRIES - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2 ** attempt)  # 指数退避
                 else:
                     raise
     

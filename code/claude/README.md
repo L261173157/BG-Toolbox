@@ -14,16 +14,26 @@
    - 提供CSV/Excel文件读写功能
 
 2. **material_classifier.py** - 物料分类模块
-   - 基于DeepSeek API的智能分类
+   - 基于Volces Ark API的智能分类（使用deepseek-v3-1-terminus模型）
    - 支持自定义分类规则
    - 提供批量分类功能
+   - 支持web_search工具调用
 
 3. **config.py** - 配置文件
    - 定义分类配置和提示词模板
    - 管理日志配置
+   - 配置API相关参数
 
 4. **logger.py** - 日志模块
    - 提供统一的日志记录功能
+
+5. **generate_classification_file.py** - 分类规则导出工具
+   - 从config.py中提取分类规则
+   - 生成Excel格式的分类标准文件
+
+6. **update_config_from_excel.py** - 分类规则导入工具
+   - 从Excel文件中读取分类规则
+   - 更新config.py中的分类规则
 
 ## 物料命名规范
 
@@ -66,7 +76,7 @@ d) 标准紧固件若无材料、表面处理、等级信息，默认为碳钢�
 ### 1. 环境要求
 
 - Python 3.8 或更高版本
-- 稳定的网络连接（用于调用DeepSeek API）
+- 稳定的网络连接（用于调用Volces Ark API）
 
 ### 2. 安装步骤
 
@@ -91,40 +101,38 @@ pip install -r requirements.txt
 这将安装以下核心依赖：
 
 - pandas: 数据处理与分析
-- requests: 网络请求（DeepSeek API调用）
+- requests: 网络请求
 - openpyxl: Excel文件读写
+- python-dotenv: 环境变量管理
+- openai: OpenAI Python客户端库
 
 #### 2.3 配置API密钥
 
-本项目使用DeepSeek API进行智能分类，请先获取DeepSeek API密钥：
+本项目使用Volces Ark API进行智能分类，请先获取API密钥：
 
-1. 访问 [DeepSeek官网](https://www.deepseek.com/) 注册并获取API密钥
-2. 将API密钥配置到系统环境变量中：
+1. 配置DouBao API Key到系统环境变量：
 
 **Windows:**
 
 ```bash
-setx DEEPSEEK_API_KEY "your-api-key-here"
+setx DouBao_API_KEY "your-doubao-api-key-here"
 ```
 
 **Linux/macOS:**
 
 ```bash
-export DEEPSEEK_API_KEY="your-api-key-here"
+export DouBao_API_KEY="your-doubao-api-key-here"
 ```
-
-或者在代码中直接配置（不推荐用于生产环境）：
-在 `material_classifier.py` 文件中找到 API_KEY 配置部分进行修改。
 
 ### 3. 验证部署
 
 运行测试程序验证部署是否成功：
 
 ```bash
-python test_classification.py
+python test.py
 ```
 
-如果输出测试成功信息，则表示部署完成。
+如果输出API返回的响应，则表示部署完成。
 
 ## 使用方法
 
@@ -159,9 +167,36 @@ python material_manager.py
 ## 测试
 
 ```bash
-python test_classification.py  # 测试分类功能
+python test_validation_data.py  # 使用验证数据集测试分类功能
+```
+
+## 分类规则管理
+
+### 导出分类规则到Excel
+
+```bash
+python generate_classification_file.py ./物料分类.xlsx
+```
+
+### 从Excel导入分类规则
+
+```bash
+python update_config_from_excel.py ./物料分类.xlsx
 ```
 
 ## 注意事项
 
-1. 确保已配置DeepSeek API密钥到系统变量DEEPSEEK_API_KEY
+1. 确保已配置DouBao API密钥到系统变量`DouBao_API_KEY`
+2. 确保网络连接正常，能够访问Volces Ark API端点
+3. API调用可能会产生费用，请确保账户有足够的余额
+4. 分类规则的维护可以通过修改`config.py`或通过Excel文件导入导出完成
+5. 使用web_search工具会增加API调用的延迟和成本，建议根据实际需求配置
+
+## 更新记录
+
+### 最近更新
+
+- 更换API提供商：从DeepSeek API改为Volces Ark API
+- 使用模型：deepseek-v3-1-terminus
+- 支持web_search工具调用
+- 实现分类规则的双向同步功能

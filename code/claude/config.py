@@ -11,9 +11,9 @@ class Config:
     """配置类，存储所有常量和配置信息"""
     
     # DeepSeek API配置
-    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # 从系统变量获取API密钥
-    DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"  # DeepSeek API地址
-    DEEPSEEK_MODEL = "deepseek-chat"  # 使用的模型
+    DEEPSEEK_API_KEY = os.getenv("DouBao_API_KEY")  # 从系统变量获取API密钥
+    DEEPSEEK_API_URL = "https://ark.cn-beijing.volces.com/api/v3"  # DeepSeek API地址
+    DEEPSEEK_MODEL = "deepseek-v3-1-terminus"  # 使用的模型
     
     # 请求配置
     REQUEST_TIMEOUT = 30  # API请求超时时间（秒）
@@ -33,7 +33,7 @@ class Config:
     # 提示词模板 - 优化版
     PROMPT_TEMPLATE = """你是一个专业的物料分类员，请根据提供的物料信息将其分类到正确的类别。
 
-物料信息包含：型号、品牌、供应商、物料名称、材料等。
+物料信息包含：型号、品牌、供应商、物料名称、材料等。 首先，请通过网络搜索获取该物料的详细信息，包括但不限于物料的功能、用途、应用领域等，然后再根据分类要求进行分类。
 
 分类规则：
 1. 请严格按照以下分类标准进行分类，不得自定义分类

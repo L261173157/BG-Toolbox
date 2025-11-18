@@ -18,7 +18,13 @@
       "Bash(powershell:*)",
       "Bash(./data/物料数据.csv)",
       "Bash(/bashes:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(git checkout:*)",
+      "Bash(for:*)",
+      "Bash(do:*)",
+      "Bash(done:*)",
+      "Bash(__NEW_LINE__ grep -A2 -B2 \"DEEPSEEK_API_KEY\\|DEEPSEEK_API_URL\" config.py)",
+      "Bash(__NEW_LINE__ echo -e \"\\nCounting categories in classification_standards.txt:\")"
     ],
     "deny": [],
     "ask": []

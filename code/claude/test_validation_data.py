@@ -4,7 +4,6 @@
 测试验证数据分类准确性
 """
 
-import json
 import pandas as pd
 from material_manager import MaterialManager
 from logger import logger
@@ -102,13 +101,6 @@ def test_validation_data():
         logger.info(f"正确分类: {correct} 条")
         logger.info(f"错误分类: {len(errors)} 条")
         logger.info(f"分类准确率: {accuracy:.2f}%")
-
-        # 保存错误信息到文件
-        if errors:
-            error_file = "data/分类错误分析.json"
-            with open(error_file, 'w', encoding='utf-8') as f:
-                json.dump(errors, f, ensure_ascii=False, indent=2)
-            logger.info(f"错误分类详情已保存到: {error_file}")
 
         # 生成Excel报告
         logger.info("开始生成Excel测试报告")

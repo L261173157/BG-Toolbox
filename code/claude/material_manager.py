@@ -6,8 +6,6 @@
 """
 
 import json
-import csv
-import os
 import time
 import pandas as pd
 from config import Config
@@ -121,6 +119,9 @@ class MaterialManager:
             
             # 读取CSV文件
             df = pd.read_csv(csv_file_path, encoding='utf-8-sig')
+
+            # 将缺失值填充为空字符串，避免后续 strip() 出错
+            df = df.fillna("")
             
             # 重置索引
             df = df.reset_index(drop=True)
@@ -164,7 +165,10 @@ class MaterialManager:
             
             # 读取Excel文件 - 使用openpyxl引擎
             df = pd.read_excel(excel_file_path, engine='openpyxl')
-            
+
+            # 将缺失值填充为空字符串，避免后续 strip() 出错
+            df = df.fillna("")
+
             # 重置索引
             df = df.reset_index(drop=True)
             
@@ -263,43 +267,3 @@ class MaterialManager:
             logger.error(f"写入处理结果失败: {e}")
             raise
 
-
-def main():
-    """主函数，用于测试物料管理功能"""
-    try:
-        # 初始化物料管理器
-        manager = MaterialManager()
-
-        # 从CSV文件读取物料数据
-        csv_input_path = "data/物料数据.csv"
-        logger.info(f"正在从文件 {csv_input_path} 读取物料数据")
-        materials_list = manager.read_materials_from_csv(csv_input_path)
-
-        if not materials_list:
-            logger.warning("未找到有效物料数据")
-            return
-
-        # 批量处理物料
-        logger.info("开始批量处理物料")
-        results = manager.process_batch(materials_list)
-
-        # 将结果写入CSV文件
-        csv_output_path = "data/物料数据_已处理.csv"
-        
-        # 先复制原始CSV文件到输出路径
-        import shutil
-        shutil.copyfile(csv_input_path, csv_output_path)
-        
-        manager.write_results_to_csv(materials_list, results, csv_output_path)
-
-        # 输出处理结果统计
-        success_count = sum(1 for r in results if r["status"] == "success")
-        failed_count = len(results) - success_count
-        logger.info(f"批量处理完成，成功: {success_count} 条，失败: {failed_count} 条，结果已保存到 {csv_output_path}")
-
-    except Exception as e:
-        logger.error(f"测试失败: {str(e)}")
-
-
-if __name__ == "__main__":
-    main()

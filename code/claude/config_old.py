@@ -2,14 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 配置文件，管理所有常量和配置信息
-
-配置项可通过以下方式覆盖：
-1. 直接修改本文件中的值
-2. 通过环境变量覆盖（支持的环境变量见下面的说明）
-
-环境变量支持：
-- ENABLE_WEB_SEARCH: 是否启用web_search工具 (true/1 启用，其他为禁用)
-- WEB_SEARCH_MAX_KEYWORD: web_search 最大关键词数 (整数)
 """
 
 import os
@@ -18,37 +10,25 @@ import logging
 class Config:
     """配置类，存储所有常量和配置信息"""
     
-    # ==================== DeepSeek API配置 ====================
+    # DeepSeek API配置
     DEEPSEEK_API_KEY = os.getenv("DouBao_API_KEY")  # 从系统变量获取API密钥
     DEEPSEEK_API_URL = "https://ark.cn-beijing.volces.com/api/v3"  # DeepSeek API地址
     DEEPSEEK_MODEL = "deepseek-v3-1-terminus"  # 使用的模型
     
-    # ==================== 请求配置 ====================
+    # 请求配置
     REQUEST_TIMEOUT = 30  # API请求超时时间（秒）
     MAX_RETRIES = 3  # 最大重试次数
     
-    # ==================== 日志配置 ====================
+    # 日志配置
     LOG_FILE = "material_classification.log"  # 日志文件路径
     LOG_LEVEL = logging.INFO  # 日志级别
 
-    # ==================== 分类标准文件配置 ====================
+    # 分类标准文件配置
     CLASSIFICATION_FILE = "./物料分类.xlsx"  # 分类标准文件路径
 
-    # ==================== API调用配置 ====================
+    # API调用配置
     API_RATE_LIMIT = 0.5  # API调用间隔（秒），防止请求过多
     
-    # ==================== Web Search 功能配置 ====================
-    # 是否启用 web_search 工具（用于在模型调用中加入基础网络搜索能力）
-    # 默认值: False（禁用）
-    # - 优点：禁用时可降低外部依赖和请求体尺寸，加快响应速度
-    # - 缺点：模型无法通过网络搜索获取实时信息
-    # 覆盖方式：设置环境变量 ENABLE_WEB_SEARCH=true 或 ENABLE_WEB_SEARCH=1 来启用
-    ENABLE_WEB_SEARCH = os.getenv("ENABLE_WEB_SEARCH", "false").lower() in ("true", "1")
-    
-    # web_search 的最大关键词数，可由业务场景调整
-    # 默认值: 4
-    # 覆盖方式：设置环境变量 WEB_SEARCH_MAX_KEYWORD=<数字>
-    WEB_SEARCH_MAX_KEYWORD = int(os.getenv("WEB_SEARCH_MAX_KEYWORD", "4"))
     
     # 提示词模板 - 优化版
     PROMPT_TEMPLATE = """你是一个专业的物料分类员，请根据提供的物料信息将其分类到正确的类别。
@@ -318,3 +298,9 @@ class Config:
 现在请对以下物料进行分类：
 物料信息：{material_info}
 分类结果："""
+    # 是否启用 web_search 工具（用于在模型调用中加入基础网络搜索能力）
+    # 设为 False 可以避免每次调用时包含 web_search，从而降低外部依赖和请求体尺寸。
+    ENABLE_WEB_SEARCH = True
+    # web_search 的最大关键词数，可由业务场景调整
+    WEB_SEARCH_MAX_KEYWORD = 4
+    

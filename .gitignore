@@ -416,10 +416,12 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
-/code/claude/data
+code/material_classifier/data
+code/material_classifier/__pycache__/
+code/material_classifier/*.pyc
+code/material_classifier/.vscode/
 docs/QXS 02.02.01 物料编码管理规定-20250411定稿版.doc
-docs/物料分类.xlsx
+docs/分类说明.xlsx
 docs/🔖机电通用物料优选库-新松自动化装备BG.xlsx
-code/claude/物料分类.xlsx
-code/claude/物料分类.xlsx
-/code/claude/.claude
+code/material_classifier/物料分类.xlsx
+/code/material_classifier/.claude

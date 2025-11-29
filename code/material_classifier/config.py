@@ -6,10 +6,6 @@ class Config:
     """配置类，存储所有常量和配置信息"""
 
     # ==================== DeepSeek API配置 ====================
-    # DEEPSEEK_API_KEY = os.getenv("DouBao_API_KEY")  # 从系统变量获取API密钥
-    # DEEPSEEK_API_URL = "https://ark.cn-beijing.volces.com/api/v3"  # DeepSeek API地址
-    # DEEPSEEK_MODEL = "deepseek-v3-1-terminus"  # 使用的模型
-
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # 从系统变量获取API密钥
     DEEPSEEK_API_URL = "https://api.deepseek.com/"  # DeepSeek API地址
     DEEPSEEK_MODEL = "deepseek-chat"  # 使用的模型
@@ -32,20 +28,6 @@ class Config:
     # ==================== API调用配置 ====================
     API_RATE_LIMIT = 0.5  # API调用间隔（秒），防止请求过多
 
-    # ==================== Web Search 功能配置 ====================
-    # 是否启用 web_search 工具（用于在模型调用中加入基础网络搜索能力）
-    # - 优点：禁用时可降低外部依赖和请求体尺寸，加快响应速度
-    # - 缺点：模型无法通过网络搜索获取实时信息
-    ENABLE_WEB_SEARCH = False
-
-    # web_search 的最大关键词数，可由业务场景调整
-    WEB_SEARCH_MAX_KEYWORD = 4
-
-    # ==================== API请求体配置 ====================
-    # API 请求的额外参数，用于控制模型行为
-    EXTRA_BODY = {
-        "thinking": {"type": "disabled"}
-    }
 
     # 基础提示词模板 - 用于构建包含关键词和备注的完整提示词
     BASE_PROMPT_TEMPLATE = """你是一个专业的物料分类员，请根据提供的物料信息将其分类到正确的类别。
@@ -54,7 +36,6 @@ class Config:
 
 1. **关键词匹配优先**：首先检查物料名称是否与分类标准中的**关键词**直接匹配
 2. **详细信息对比**：如果关键词匹配失败，仔细对比物料名称、型号、品牌等信息与**备注说明**中的详细描述
-3. **网络搜索辅助**：如果仍无法确定，通过网络搜索获取该物料的详细信息（包括功能、用途、应用领域等），再结合分类标准进行分类
 
 分类规则：
 1. 请严格按照以下分类标准进行分类，不得自定义分类

@@ -184,19 +184,8 @@ class MaterialClassifier:
         try:
             logger.info("正在初始化对话上下文...")
             
-            # 根据配置决定是否启用 web_search 工具
-            # 注意：Config.ENABLE_WEB_SEARCH 默认在 `config.py` 中为 False，
-            # 可通过环境变量 `ENABLE_WEB_SEARCH=true` 或 `ENABLE_WEB_SEARCH=1` 覆盖。
-            # 启用 web_search 会在 API 请求中附加 web_search 工具，用于提高分类准确度，
-            # 但会增加请求延迟和可能的成本开销。
+            # 不启用 web_search 工具
             tools = []
-            if getattr(Config, "ENABLE_WEB_SEARCH", False):
-                tools = [
-                    {
-                        "type": "web_search",
-                        "max_keyword": getattr(Config, "WEB_SEARCH_MAX_KEYWORD", 4),
-                    }
-                ]
             
             # 构建包含完整分类规则的prompt
             comprehensive_prompt = self.build_comprehensive_prompt()
@@ -208,8 +197,7 @@ class MaterialClassifier:
                     {"role": "system", "content": comprehensive_prompt},  # 使用system角色
                 ],
                 temperature=0.1,
-                tools=tools,
-                extra_body=Config.EXTRA_BODY
+                tools=tools
             )
 
             self.conversation_context_id = response.id
@@ -260,7 +248,6 @@ class MaterialClassifier:
                         {"role": "user", "content": prompt},
                     ],
                     temperature=0.1,  # 降低随机性，提高稳定性
-                    extra_body=Config.EXTRA_BODY
                 )
 
                 # 解析响应 - 参考用户提供的示例格式

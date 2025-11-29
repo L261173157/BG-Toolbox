@@ -154,6 +154,7 @@ class ClassifierValidator:
             # 提取结果
             ai_main = ai_result.get('main_category', '')
             ai_sub = ai_result.get('sub_category', '')
+            ai_source = ai_result.get('classification_source', '')  # 识别来源: keyword_matcher 或 ai
             human_main = material_data['人工大类']
             human_sub = material_data['人工二级类']
 
@@ -183,6 +184,7 @@ class ClassifierValidator:
                 # AI分类
                 'AI大类': ai_main,
                 'AI二级类': ai_sub,
+                '识别来源': ai_source,  # 新增字段：关键词验证还是AI生成
 
                 # 匹配结果
                 '大类匹配': '✓' if main_match else '✗',
@@ -236,7 +238,12 @@ class ClassifierValidator:
             raise ValueError("请先调用load_validation_data()加载数据")
 
         # 限制样本数
-        samples = self.validation_data[:max_samples] if max_samples else self.validation_data
+        if max_samples:
+            # 随机选择指定数量的样本
+            import random
+            samples = random.sample(self.validation_data, max_samples)
+        else:
+            samples = self.validation_data
         total_samples = len(samples)
 
         logger.info(f"开始批量验证: 共 {total_samples} 个样本，使用 {max_workers} 个线程")
@@ -251,15 +258,8 @@ class ClassifierValidator:
         # 保存临时文件路径，用于后续清理
         self.temp_files.append(temp_result_file)
 
-        # 创建Token统计变量和锁
-        total_input_tokens = 0
-        total_output_tokens = 0
-        total_total_tokens = 0
-        token_lock = threading.Lock()
-
         # 线程函数，用于初始化自己的MaterialClassifier实例并处理单个物料
         def process_material(idx, material_data):
-            nonlocal total_input_tokens, total_output_tokens, total_total_tokens
 
             try:
                 # 为每个线程创建独立的MaterialClassifier实例
@@ -272,12 +272,6 @@ class ClassifierValidator:
                 with results_lock:
                     results.append(result)
                     self._write_result_to_file(temp_result_file, result)
-
-                # 更新全局Token统计
-                with token_lock:
-                    total_input_tokens += classifier.input_tokens
-                    total_output_tokens += classifier.output_tokens
-                    total_total_tokens += classifier.total_tokens
 
                 # API调用间隔
                 time.sleep(Config.API_RATE_LIMIT)
@@ -318,15 +312,7 @@ class ClassifierValidator:
                     logger.error(f"线程任务 {idx} 失败: {e}")
                     # 异常会在process_material中处理，这里只需记录日志
 
-        # 保存Token统计
-        self.token_stats = {
-            'input_tokens': total_input_tokens,
-            'output_tokens': total_output_tokens,
-            'total_tokens': total_total_tokens
-        }
-
         logger.info(f"批量验证完成，共处理 {len(results)} 个样本")
-        logger.info(f"Token使用总量: 输入={total_input_tokens}, 输出={total_output_tokens}, 总计={total_total_tokens}")
         logger.info(f"临时结果文件: {temp_result_file}")
 
         self.results = results
@@ -521,7 +507,7 @@ class ClassifierValidator:
 
         # 定义CSV表头
         fieldnames = ['物料编码', '物料名称', '图号/型号', '分类/品牌',
-                     '人工大类', '人工二级类', 'AI大类', 'AI二级类',
+                     '人工大类', '人工二级类', 'AI大类', 'AI二级类', '识别来源',
                      '大类匹配', '二级类匹配', '完全匹配', 'status', 'error']
 
         with open(file_path, 'w', newline='', encoding='utf-8') as f:
@@ -621,7 +607,7 @@ def main():
         max_samples = None
 
     if max_samples:
-        print(f"将验证前 {max_samples} 个样本")
+        print(f"将随机验证 {max_samples} 个样本")
     else:
         print("将验证全部样本")
 

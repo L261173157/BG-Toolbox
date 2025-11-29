@@ -75,7 +75,13 @@ class MaterialManager:
             return result
 
         except Exception as e:
-            logger.error(f"物料处理失败: {json.dumps(material_data, ensure_ascii=False)} -> {e}")
+            # 确保material_data可以被JSON序列化（处理Timestamp类型）
+            import json
+            def default(obj):
+                if hasattr(obj, 'strftime'):
+                    return obj.strftime('%Y-%m-%d %H:%M:%S')
+                return str(obj)
+            logger.error(f"物料处理失败: {json.dumps(material_data, default=default, ensure_ascii=False)} -> {e}")
             return {
                 "original_data": material_data,
                 "error": str(e),
@@ -99,14 +105,22 @@ class MaterialManager:
 
         # 限制样本数量
         processed_materials = materials_list[:max_samples] if max_samples else materials_list
+        total_materials = len(processed_materials)
 
         results = []
         lock = threading.Lock()
+        processed_count = 0  # 已处理数量
 
         def thread_process(material_data):
+            nonlocal processed_count
             result = self.process_material(material_data)
             with lock:
                 results.append(result)
+                processed_count += 1
+                # 每处理10%或最后一个物料时记录进度
+                if processed_count % max(1, total_materials // 10) == 0 or processed_count == total_materials:
+                    progress = (processed_count / total_materials) * 100
+                    logger.info(f"批量处理进度: {processed_count}/{total_materials} ({progress:.1f}%)")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             # 提交所有任务
@@ -129,6 +143,11 @@ class MaterialManager:
                     }
                     with lock:
                         results.append(result)
+                        processed_count += 1
+                        # 每处理10%或最后一个物料时记录进度
+                        if processed_count % max(1, total_materials // 10) == 0 or processed_count == total_materials:
+                            progress = (processed_count / total_materials) * 100
+                            logger.info(f"批量处理进度: {processed_count}/{total_materials} ({progress:.1f}%)")
 
         return results
 
@@ -162,7 +181,12 @@ class MaterialManager:
                     "材料": row.get("材料", ""),
                     "分类/品牌": row.get("分类/品牌", "")
                 }
-                
+
+                # 转换Timestamp类型为字符串，避免JSON序列化问题
+                for key, value in material_data.items():
+                    if hasattr(value, 'strftime'):
+                        material_data[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+
                 # 不跳过不完整的物料数据行，所有行都处理
                 materials_list.append(material_data)
 
@@ -235,6 +259,11 @@ class MaterialManager:
                 # 创建物料数据 - 保留所有原始字段，同时兼容新格式
                 # 对于2025标准化物料文件，使用原始列名以保留所有信息
                 raw_material_data = row_filled.to_dict()
+
+                # 转换Timestamp类型为字符串，避免JSON序列化问题
+                for key, value in raw_material_data.items():
+                    if hasattr(value, 'strftime'):
+                        raw_material_data[key] = value.strftime('%Y-%m-%d %H:%M:%S')
 
                 # 添加标准化字段名映射
                 standardized_data = {
@@ -454,12 +483,15 @@ def main():
             max_samples = None
 
         # 限制物料数量
-        materials_to_process = materials[:max_samples] if max_samples else materials
-        total_to_process = len(materials_to_process)
-
         if max_samples:
-            print(f"将处理前 {total_to_process} 个物料")
+            # 随机选择指定数量的物料
+            import random
+            materials_to_process = random.sample(materials, max_samples)
+            total_to_process = len(materials_to_process)
+            print(f"将随机处理 {total_to_process} 个物料")
         else:
+            materials_to_process = materials
+            total_to_process = len(materials_to_process)
             print("将处理全部物料")
 
         # 批量处理物料
@@ -467,7 +499,8 @@ def main():
         results = material_manager.process_batch(materials_to_process)
 
         # 写入处理结果
-        logger.info(f"分类完成，开始写入结果到: {output_file_path}")
+        logger.info(f"分类完成，共处理 {len(results)} 条物料 (成功: {sum(1 for r in results if r['status'] == 'success')}, 失败: {sum(1 for r in results if r['status'] == 'failed')})")
+        logger.info(f"开始写入结果到: {output_file_path}")
         material_manager.write_results_to_csv(results, output_file_path)
 
         logger.info("物料分类处理全部完成！")

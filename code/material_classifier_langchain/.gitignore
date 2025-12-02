@@ -1,0 +1,57 @@
+# 虚拟环境目录
+venv/
+env/
+.env/
+
+# 日志文件
+*.log
+*.log.*
+
+# IDE配置文件
+.vscode/
+.claude/
+*.swp
+*.swo
+*~
+
+# 临时文件和目录
+*.tmp
+*.temp
+/tmp/
+
+# 敏感文件
+.env
+.env.local
+.env.example
+
+# 数据文件（大的Excel文件）
+*.xlsx
+*.xls
+*.csv
+
+# 生成的结果文件
+material_classification_results_*.csv
+验证报告_*.xlsx
+
+# Python编译文件
+*.pyc
+__pycache__/
+
+# 测试相关
+.pytest_cache/
+coverage.xml
+.coverage
+
+# OS特定文件
+.DS_Store
+Thumbs.db
+
+# 其他临时文件
+*.bak
+*.old
+*.backup
+
+# 编辑器文件
+.pytest_cache/
+.claude/
+.vscode/

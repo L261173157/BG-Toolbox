@@ -38,6 +38,29 @@ class ClassifierValidator:
         self.results = []
         # 跟踪临时文件
         self.temp_files = []
+        # 进度回调函数
+        self.progress_callback = None
+
+    def set_progress_callback(self, callback):
+        """
+        设置进度回调函数
+
+        参数:
+            callback: 进度回调函数，接收一个整数参数(0-100)
+        """
+        self.progress_callback = callback
+
+    def _update_progress(self, current, total):
+        """
+        更新进度
+
+        参数:
+            current: 当前进度
+            total: 总进度
+        """
+        if self.progress_callback:
+            progress = int((current / total) * 100)
+            self.progress_callback(progress)
 
     def load_validation_data(self) -> List[Dict]:
         """
@@ -304,13 +327,20 @@ class ClassifierValidator:
             future_to_idx = {executor.submit(process_material, idx, material): idx for idx, material in enumerate(samples)}
 
             # 等待所有任务完成或捕获异常
+            completed = 0
             for future in concurrent.futures.as_completed(future_to_idx):
                 idx = future_to_idx[future]
+                completed += 1
+                # 更新进度
+                self._update_progress(completed, total_samples)
                 try:
                     future.result()
                 except Exception as e:
                     logger.error(f"线程任务 {idx} 失败: {e}")
                     # 异常会在process_material中处理，这里只需记录日志
+
+        # 进度完成
+        self._update_progress(total_samples, total_samples)
 
         logger.info(f"批量验证完成，共处理 {len(results)} 个样本")
         logger.info(f"临时结果文件: {temp_result_file}")

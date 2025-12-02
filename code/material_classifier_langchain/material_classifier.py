@@ -50,34 +50,59 @@ class MaterialClassifier:
             else "./分类说明.xlsx"
         )
 
-        # 加载分类标准（仅加载一次）
+        # 初始化默认分类映射，防止初始化失败导致程序崩溃
         if MaterialClassifier._classification_mapping is None:
-            MaterialClassifier._classification_mapping = self.load_classification_standards()
-            logger.info(f"成功加载 {len(MaterialClassifier._classification_mapping)} 条分类标准")
+            try:
+                MaterialClassifier._classification_mapping = self.load_classification_standards()
+                logger.info(f"成功加载 {len(MaterialClassifier._classification_mapping)} 条分类标准")
+            except Exception as e:
+                logger.error(f"加载分类标准失败: {str(e)}")
+                # 使用空分类映射，防止程序崩溃
+                MaterialClassifier._classification_mapping = {}
 
         self.classification_mapping = MaterialClassifier._classification_mapping
 
         # 初始化本地关键词匹配器
-        from keyword_matcher import KeywordMatcher
-        self.keyword_matcher = KeywordMatcher(self.classification_mapping)
-        logger.info("本地关键词匹配器初始化完成")
+        try:
+            from keyword_matcher import KeywordMatcher
+            self.keyword_matcher = KeywordMatcher(self.classification_mapping)
+            logger.info("本地关键词匹配器初始化完成")
+        except Exception as e:
+            logger.error(f"初始化关键词匹配器失败: {str(e)}")
+            # 使用简单的关键词匹配器替代，防止程序崩溃
+            self.keyword_matcher = None
 
         # 验证API密钥是否存在
         if not self.api_key:
             logger.error("DeepSeek API密钥未配置，请检查系统变量DEEPSEEK_API_KEY")
-            raise ValueError("DeepSeek API密钥未配置")
-
-        # 初始化LangChain的ChatOpenAI客户端
-        self.client = ChatOpenAI(
-            api_key=self.api_key,
-            base_url=self.api_url,
-            model=self.model,
-            temperature=0.1,
-            timeout=Config.REQUEST_TIMEOUT,
-        )
+            # 不抛出异常，允许程序继续运行，只记录错误
+            self.api_key_valid = False
+        else:
+            self.api_key_valid = True
+            
+            # 初始化LangChain的ChatOpenAI客户端
+            try:
+                self.client = ChatOpenAI(
+                    api_key=self.api_key,
+                    base_url=self.api_url,
+                    model=self.model,
+                    temperature=0.1,
+                    timeout=Config.REQUEST_TIMEOUT,
+                )
+                logger.info("LangChain ChatOpenAI客户端初始化完成")
+            except Exception as e:
+                logger.error(f"初始化ChatOpenAI客户端失败: {str(e)}")
+                # 使用None替代，防止程序崩溃
+                self.client = None
         
         # 初始化输出解析器
-        self.output_parser = JsonOutputParser(pydantic_object=ClassificationResult)
+        try:
+            self.output_parser = JsonOutputParser(pydantic_object=ClassificationResult)
+            logger.info("输出解析器初始化完成")
+        except Exception as e:
+            logger.error(f"初始化输出解析器失败: {str(e)}")
+            # 使用None替代，防止程序崩溃
+            self.output_parser = None
         
         # API 连续失败计数
         self.continuous_api_failures = 0
@@ -204,6 +229,8 @@ class MaterialClassifier:
         """
         # 网络搜索功能已移除
 
+        # 每个API请求使用自己的重试计数，不使用全局连续失败计数
+        # 这样即使个别请求失败，也不会影响其他请求
         for attempt in range(Config.MAX_RETRIES):
             try:
                 # 构建提示词模板
@@ -218,7 +245,7 @@ class MaterialClassifier:
                 # 解析响应
                 parsed_result = self.output_parser.parse(response.content)
                 
-                # 重置连续失败计数
+                # 重置全局连续失败计数
                 self.continuous_api_failures = 0
 
                 # 添加分类来源信息
@@ -231,18 +258,21 @@ class MaterialClassifier:
                     f"API调用失败 (尝试 {attempt+1}/{Config.MAX_RETRIES}): {str(e)}"
                 )
 
-                # 增加连续失败计数
-                self.continuous_api_failures += 1
-
-                # 如果连续失败次数达到阈值，抛出异常
-                if self.continuous_api_failures >= self.MAX_API_FAILURES:
-                    logger.error(f"API连续失败 {self.continuous_api_failures} 次，终止程序")
-                    raise
+                # 这里不再使用全局连续失败计数来终止程序
+                # 而是让每个请求都完成自己的重试次数
+                # 这样即使个别请求失败，也不会影响整个程序
 
                 if attempt < Config.MAX_RETRIES - 1:
                     time.sleep(2**attempt)  # 指数退避
                 else:
-                    raise
+                    logger.error(f"API调用最终失败，返回默认结果")
+                    # 返回包含错误信息的默认结果，而不是抛出异常
+                    return {
+                        "main_category": "API调用失败",
+                        "sub_category": "API调用失败",
+                        "classification_source": "deepseek_api",
+                        "error": str(e)
+                    }
 
     def classify_material(self, material_data):
         """
@@ -253,9 +283,6 @@ class MaterialClassifier:
 
         返回值:
             dict: 分类结果，包含"main_category"和"sub_category"键
-
-        异常:
-            Exception: 分类失败异常
         """
         try:
             # 格式化物料信息
@@ -277,32 +304,74 @@ class MaterialClassifier:
 
             # 步骤1: 尝试本地关键词匹配（优先）
             logger.info("尝试本地关键词匹配...")
-            local_match = self.keyword_matcher.match_by_multiple_fields(formatted_data)
+            local_match = None
+            
+            # 检查关键词匹配器是否初始化成功
+            if self.keyword_matcher is not None:
+                try:
+                    local_match = self.keyword_matcher.match_by_multiple_fields(formatted_data)
+                except Exception as e:
+                    logger.error(f"本地关键词匹配失败: {str(e)}")
+                    local_match = None
+            else:
+                logger.warning("关键词匹配器未初始化，跳过本地匹配")
 
             if local_match:
                 main_cat, sub_cat = local_match
                 result = {"main_category": main_cat, "sub_category": sub_cat, "classification_source": "keyword_matcher"}
 
                 # 验证匹配结果是否合法
-                self.validate_classification_result(result)
+                try:
+                    self.validate_classification_result(result)
+                except Exception as e:
+                    logger.error(f"验证分类结果失败: {str(e)}")
+                    # 继续执行，不中断程序
 
                 logger.info(f"本地关键词匹配成功: {material_info} -> {result}")
                 return result
 
-            logger.info("本地关键词匹配失败，将使用大模型进行分类...")
+            logger.info("本地关键词匹配失败或未初始化，将使用大模型进行分类...")
 
             # 步骤2: 直接调用API进行分类
-            result = self._call_deepseek_api(material_info)
+            result = None
+            
+            # 检查API客户端是否初始化成功
+            if self.api_key_valid and self.client is not None and self.output_parser is not None:
+                try:
+                    result = self._call_deepseek_api(material_info)
+                    
+                    # 步骤4: 验证分类结果
+                    try:
+                        self.validate_classification_result(result)
+                    except Exception as e:
+                        logger.error(f"验证分类结果失败: {str(e)}")
+                        # 继续执行，不中断程序
 
-            # 步骤4: 验证分类结果
-            self.validate_classification_result(result)
-
-            logger.info(f"大模型分类成功: {material_info} -> {result}")
-            return result
+                    logger.info(f"大模型分类成功: {material_info} -> {result}")
+                    return result
+                except Exception as e:
+                    logger.error(f"大模型分类失败: {str(e)}")
+                    result = None
+            else:
+                logger.warning("API客户端未初始化，跳过大模型分类")
+            
+            # 如果所有分类方法都失败，返回默认结果
+            return {
+                "main_category": "分类失败",
+                "sub_category": "分类失败",
+                "classification_source": "error",
+                "error": "无法使用任何分类方法进行分类"
+            }
 
         except Exception as e:
             logger.error(f"物料分类失败: {material_info} -> {str(e)}")
-            raise
+            # 返回包含错误信息的结果，而不是重新抛出异常
+            return {
+                "main_category": "分类失败",
+                "sub_category": "分类失败",
+                "classification_source": "error",
+                "error": str(e)
+            }
 
     def validate_classification_result(self, result):
         """
